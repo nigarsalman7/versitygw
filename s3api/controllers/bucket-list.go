@@ -75,6 +75,9 @@ func (c S3ApiController) ListBuckets(ctx fiber.Ctx) (*Response, error) {
 			MaxBuckets:        maxBuckets,
 			ContinuationToken: cToken,
 			Prefix:            prefix,
+			PolicyVisible: func(bucket string, policy []byte) bool {
+				return auth.BucketPolicyGrantsVisibility(policy, acct, bucket)
+			},
 		})
 	if err != nil {
 		return &Response{}, err

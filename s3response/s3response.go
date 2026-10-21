@@ -330,6 +330,12 @@ type ListBucketsInput struct {
 	ContinuationToken string
 	Prefix            string
 	MaxBuckets        int32
+
+	// PolicyVisible, when set, is called for buckets the caller does not
+	// own. Returning true adds the bucket to the listing because its bucket
+	// policy grants the caller access. Backends that do not support it
+	// may ignore it.
+	PolicyVisible func(bucket string, policy []byte) bool
 }
 
 type ListAllMyBucketsResult struct {

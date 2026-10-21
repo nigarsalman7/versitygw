@@ -136,7 +136,7 @@ func (s *S3Proxy) ListBuckets(ctx context.Context, input s3response.ListBucketsI
 			return s3response.ListAllMyBucketsResult{}, err
 		}
 
-		if acl.Owner == input.Owner {
+		if acl.Owner == input.Owner || s.bucketVisibleByPolicy(ctx, *b.Name, input.PolicyVisible) {
 			buckets = append(buckets, s3response.ListAllMyBucketsEntry{
 				Name:         *b.Name,
 				CreationDate: *b.CreationDate,
@@ -154,6 +154,20 @@ func (s *S3Proxy) ListBuckets(ctx context.Context, input s3response.ListBucketsI
 		ContinuationToken: backend.GetStringFromPtr(output.ContinuationToken),
 		Prefix:            backend.GetStringFromPtr(output.Prefix),
 	}, nil
+}
+
+// bucketVisibleByPolicy reports whether the bucket policy stored in the meta
+// bucket grants the caller access, so a non-owner can see the bucket in
+// ListBuckets. Missing or unreadable policies hide the bucket.
+func (s *S3Proxy) bucketVisibleByPolicy(ctx context.Context, bucket string, visible func(string, []byte) bool) bool {
+	if visible == nil {
+		return false
+	}
+	policy, err := s.getMetaBucketObjData(ctx, bucket, metaPrefixPolicy, false)
+	if err != nil || len(policy) == 0 {
+		return false
+	}
+	return visible(bucket, policy)
 }
 
 func (s *S3Proxy) HeadBucket(ctx context.Context, input *s3.HeadBucketInput) (*s3.HeadBucketOutput, error) {
